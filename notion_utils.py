@@ -47,10 +47,8 @@ def delete_customer_from_notion(
                 "지역": {"rich_text": [{"text": {"content": region or ""}}]},
                 "메모": {"rich_text": [{"text": {"content": memo or ""}}]},
                 "대출항목": {"rich_text": [{"text": {"content": loans or ""}}]},
-                "KB시세": {
-                    "number": float(kb_price) if kb_price not in [None, ""] else 0
-                },
-                "면적": {"number": float(area) if area not in [None, ""] else 0},
+                "KB시세": {"rich_text": [{"text": {"content": str(kb_price)}}]},
+                "면적": {"rich_text": [{"text": {"content": str(area)}}]},
                 "공동소유자": {
                     "rich_text": [{"text": {"content": co_owners or ""}}]
                 },
