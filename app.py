@@ -192,7 +192,6 @@ if uploaded_file:
         st.session_state.page_index = 0
     page_index = st.session_state.page_index
 
-
     # 4. 미리보기 이미지 렌더링
     # 좌측 페이지
     img1 = pdf_to_image(pdf_path, page_index)
@@ -234,6 +233,7 @@ if selected_from_list:
     load_customer_input(selected_from_list)
     st.success(f"✅ {selected_from_list}님의 데이터가 불러와졌습니다.")
 
+# 🔽 삭제된 고객 이력 다운로드
 with row1_col3:
     if st.session_state.get("deleted_data_ready", False):
         if os.path.exists(ARCHIVE_FILE):
@@ -244,6 +244,22 @@ with row1_col3:
                     file_name=ARCHIVE_FILE,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
+
+st.markdown("---")
+st.subheader("🗑️ 고객 정보 삭제")
+
+# 🔘 삭제할 고객 선택
+customer_list = get_customer_options()
+delete_name = st.selectbox("삭제할 고객 선택", [""] + customer_list, key="delete_select")
+
+# ❌ 삭제 버튼
+if st.button("❌ 선택한 고객 정보 삭제"):
+    if delete_name:
+        delete_customer_everywhere(delete_name)
+        st.success(f"✅ {delete_name} 님의 정보가 CSV 및 Notion에서 삭제되었습니다.")
+    else:
+        st.warning("⚠️ 삭제할 고객을 선택해주세요.")
+
 # ------------------------------
 # 🔹 기본 정보 입력
 # ------------------------------
@@ -521,7 +537,7 @@ if sum_dh > 0:
 if sum_sm > 0:
     text_to_copy += f"선말소: {sum_sm:,}만\n"
 
-st.text_area("결과 내용", value=text_to_copy, height=320)
+memo = st.text_area("📌결과", key="memo_input", height=320)
 
 
 # ------------------------------
@@ -608,15 +624,4 @@ if st.button("📌 이 입력 내용 저장하기", key="manual_save_button"):
         st.error(f"❌ Notion 저장 실패: {e}")
 
 
-st.markdown("---")
-st.subheader("🗑️ 고객 정보 삭제")
 
-delete_name = st.text_input("삭제할 고객명 입력")
-
-if st.button("❌ 고객 정보 삭제"):
-    if delete_name:
-        from history_manager import delete_customer_everywhere
-        delete_customer_everywhere(delete_name)
-        st.success(f"✅ {delete_name} 님의 정보가 CSV 및 Notion에서 삭제되었습니다.")
-    else:
-        st.warning("⚠️ 고객명을 입력해주세요.")
