@@ -25,6 +25,11 @@ from history_manager import (
     search_customers_by_keyword
 )
 
+from dotenv import load_dotenv
+load_dotenv()
+
+ARCHIVE_FILE = "ltv_archive_deleted.xlsx"
+
 # ------------------------------
 # 🔹 텍스트 기반 추출 함수들
 # ------------------------------
@@ -245,20 +250,75 @@ with row1_col3:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
+# ------------------------------
+# 🔻 고객 삭제 기능
+# ------------------------------
 st.markdown("---")
 st.subheader("🗑️ 고객 정보 삭제")
 
-# 🔘 삭제할 고객 선택
 customer_list = get_customer_options()
 delete_name = st.selectbox("삭제할 고객 선택", [""] + customer_list, key="delete_select")
 
-# ❌ 삭제 버튼
 if st.button("❌ 선택한 고객 정보 삭제"):
     if delete_name:
         delete_customer_everywhere(delete_name)
         st.success(f"✅ {delete_name} 님의 정보가 CSV 및 Notion에서 삭제되었습니다.")
     else:
         st.warning("⚠️ 삭제할 고객을 선택해주세요.")
+
+# ------------------------------
+# 💾 수동 저장 기능 (CSV + Notion)
+# ------------------------------
+st.markdown("---")
+st.markdown("### 💾 수동 저장")
+
+cur_name = st.session_state.get("customer_name", "").strip()
+cur_addr = st.session_state.get("address_input", "").strip()
+
+if st.button("📌 이 입력 내용 저장하기", key="manual_save_button"):
+
+    # ✅ 1. CSV 저장
+    save_user_input(overwrite=True)
+    st.success("✅ CSV 저장 완료")
+
+    # ✅ 2. Notion 저장
+    try:
+        notion = Client(auth=st.secrets["notion"]["token"])
+        db_id = st.secrets["notion"]["database_id"]
+
+        # 불러올 모든 필드
+        customer_name = st.session_state.get("customer_name", "").strip()
+        address = st.session_state.get("address_input", "").strip()
+        region = st.session_state.get("region", "")
+        memo = st.session_state.get("memo_input", "")
+        kb_price = st.session_state.get("raw_price_input", "")
+        area = st.session_state.get("area_input", "")
+        co_owners = str(st.session_state.get("co_owners", []))
+        loan_items = str(st.session_state.get("대출항목", []))  # 혹은 save_user_input에서 추출
+
+        now = datetime.now().isoformat()
+
+        if customer_name and address:
+            notion.pages.create(
+                parent={"database_id": db_id},
+                properties={
+                    "고객명": {"title": [{"text": {"content": customer_name}}]},
+                    "주소": {"rich_text": [{"text": {"content": address}}]},
+                    "지역": {"rich_text": [{"text": {"content": region}}]},
+                    "저장시간": {"date": {"start": now}},
+                    "KB시세": {"number": float(kb_price) if kb_price else 0},
+                    "면적": {"number": float(area) if area else 0},
+                    "공동소유자": {"rich_text": [{"text": {"content": co_owners}}]},
+                    "대출항목": {"rich_text": [{"text": {"content": loan_items}}]},
+                    "메모": {"rich_text": [{"text": {"content": memo}}]}
+                }
+            )
+            st.success("✅ Notion 저장 완료")
+        else:
+            st.warning("⚠️ 고객명 또는 주소가 비어있습니다. Notion 저장 생략됨")
+
+    except Exception as e:
+        st.error(f"❌ Notion 저장 실패: {e}")
 
 # ------------------------------
 # 🔹 기본 정보 입력
@@ -274,7 +334,6 @@ with info_col2:
     co_owners = st.session_state.get("co_owners", [])
     default_name_text = "  ".join([f"{name}  {birth}" for name, birth in co_owners]) if co_owners else ""
     customer_name = st.text_input("고객명", default_name_text, key="customer_name")
-
 
 col1, col2 = st.columns(2)
 with col1:
@@ -585,43 +644,6 @@ st.markdown(f"""
 - 컨설팅 수수료: {consult_fee:,}만원
 - 브릿지 수수료: {bridge_fee:,}만원
 """)
-
-
-st.markdown("---")
-st.markdown("### 💾 수동 저장")
-
-cur_name = st.session_state.get("customer_name", "").strip()
-cur_addr = st.session_state.get("address_input", "").strip()
-
-if st.button("📌 이 입력 내용 저장하기", key="manual_save_button"):
-
-    # ✅ 1. CSV 저장
-    save_user_input(overwrite=True)
-    st.success("✅ CSV 저장 완료")
-
-    # ✅ 2. Notion 저장
-    try:
-        notion = Client(auth=st.secrets["notion"]["token"])
-        db_id = st.secrets["notion"]["database_id"]
-
-        customer_name = st.session_state.get("customer_name", "").strip()
-        address = st.session_state.get("address_input", "").strip()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        if customer_name and address:
-            notion.pages.create(
-                parent={"database_id": db_id},
-                properties={
-                    "고객명": {"title": [{"text": {"content": customer_name}}]},
-                    "주소": {"rich_text": [{"text": {"content": address}}]},
-                    "저장시각": {"rich_text": [{"text": {"content": now}}]}
-                }
-            )
-            st.success("✅ Notion 저장 완료")
-        else:
-            st.warning("⚠️ 고객명 또는 주소가 비어있습니다. Notion 저장 생략됨")
-    except Exception as e:
-        st.error(f"❌ Notion 저장 실패: {e}")
 
 
 
