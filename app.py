@@ -21,7 +21,6 @@ from history_manager import (
     save_user_input,
     get_customer_options,
     load_customer_input,
-    cleanup_old_history,
     search_customers_by_keyword
 )
 
