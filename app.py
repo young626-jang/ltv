@@ -624,10 +624,11 @@ st.markdown("---")
 st.subheader("🗑️ 고객 정보 삭제")
 
 delete_name = st.text_input("삭제할 고객명 입력")
+
 if st.button("❌ 고객 정보 삭제"):
     if delete_name:
         from history_manager import delete_customer_everywhere
- delete_customer_everywhere(delete_name)
- st.success(f"✅ {delete_name} 님의 정보가 CSV 및 Notion 에서 삭제되었습니다")
- 그렇지 않으면:
- st.warning("⚠️ 고객명을 입력해주세요.")
+        delete_customer_everywhere(delete_name)
+        st.success(f"✅ {delete_name} 님의 정보가 CSV 및 Notion에서 삭제되었습니다.")
+    else:
+        st.warning("⚠️ 고객명을 입력해주세요.")
