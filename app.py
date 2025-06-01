@@ -8,10 +8,13 @@ import webbrowser
 import platform
 from datetime import datetime
 from notion_client import Client  # Notion SDK
+from notion_utils import auto_delete_old_entries_from_notion
+auto_delete_old_entries_from_notion(days=30)
 
 import fitz  # PyMuPDF
 import pandas as pd
 import streamlit as st
+import save_user_input
 
 from ltv_map import region_map
 from history_manager import (
@@ -587,9 +590,6 @@ cur_name = st.session_state.get("customer_name", "").strip()
 cur_addr = st.session_state.get("address_input", "").strip()
 
 if st.button("📌 이 입력 내용 저장하기", key="manual_save_button"):
-    from history_manager import save_user_input
-    from notion_client import Client
-    from datetime import datetime
 
     # ✅ 1. CSV 저장
     save_user_input(overwrite=True)
@@ -618,3 +618,16 @@ if st.button("📌 이 입력 내용 저장하기", key="manual_save_button"):
             st.warning("⚠️ 고객명 또는 주소가 비어있습니다. Notion 저장 생략됨")
     except Exception as e:
         st.error(f"❌ Notion 저장 실패: {e}")
+
+
+st.markdown("---")
+st.subheader("🗑️ 고객 정보 삭제")
+
+delete_name = st.text_input("삭제할 고객명 입력")
+if st.button("❌ 고객 정보 삭제"):
+    if delete_name:
+        from history_manager import delete_customer_everywhere
+ delete_customer_everywhere(delete_name)
+ st.success(f"✅ {delete_name} 님의 정보가 CSV 및 Notion 에서 삭제되었습니다")
+ 그렇지 않으면:
+ st.warning("⚠️ 고객명을 입력해주세요.")
