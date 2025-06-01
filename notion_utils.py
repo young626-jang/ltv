@@ -2,8 +2,11 @@
 
 from notion_client import Client
 import os
+from datetime import datetime, timedelta
+import streamlit as st  # st.secrets용
 
-# 🔐 토큰/DB 정보 로딩 (Streamlit이든 dotenv든 호환되도록)
+
+# 🔐 Notion 클라이언트 초기화 함수
 def get_notion_client():
     try:
         token = (
@@ -15,13 +18,13 @@ def get_notion_client():
             or (st.secrets["notion"]["database_id"] if "notion" in st.secrets else None)
         )
         if not token or not db_id:
-            raise Exception("Notion 토큰 또는 데이터베이스 ID 누락")
+            raise Exception("Notion 토큰 또는 DB ID 누락")
         return Client(auth=token), db_id
     except Exception as e:
         raise RuntimeError(f"❌ Notion 설정 로딩 실패: {e}")
 
 
-# ✅ 고객 정보를 Notion DB에 기록
+# ✅ 고객 삭제 정보 Notion에 기록
 def delete_customer_from_notion(
     name,
     address,
@@ -58,7 +61,7 @@ def delete_customer_from_notion(
         raise RuntimeError(f"❌ Notion 기록 실패: {e}")
 
 
-# ✅ (선택) 수동 저장용 함수도 별도로 둘 수 있음
+# ✅ 수동 저장용 Notion 기록 함수 (필요시)
 def create_customer_record(
     name,
     address,
@@ -70,7 +73,7 @@ def create_customer_record(
     area=0,
     co_owners="",
 ):
-    return delete_customer_from_notion(
+    delete_customer_from_notion(
         name=name,
         address=address,
         deleted_at=timestamp,
@@ -81,3 +84,25 @@ def create_customer_record(
         area=area,
         co_owners=co_owners,
     )
+
+
+# ✅ 오래된 Notion 항목 자동 archive 기능
+def auto_delete_old_entries_from_notion(days=30):
+    client, db_id = get_notion_client()
+    cutoff = datetime.now() - timedelta(days=days)
+
+    pages = client.databases.query(database_id=db_id).get("results", [])
+    
+    for page in pages:
+        props = page["properties"]
+        date_field = props.get("저장시간", {}).get("date", {})
+        date_str = date_field.get("start")
+
+        if date_str:
+            try:
+                page_date = datetime.fromisoformat(date_str)
+                if page_date < cutoff:
+                    client.pages.update(page["id"], archived=True)
+                    print(f"✅ 오래된 레코드 아카이브됨: {props['고객명']['title'][0]['text']['content']}")
+            except Exception as e:
+                print(f"❌ 날짜 파싱/아카이브 실패: {e}")
