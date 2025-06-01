@@ -1,78 +1,83 @@
+# notion_utils.py
+
 from notion_client import Client
-import streamlit as st
-from datetime import datetime, timedelta
-import pandas as pd
 import os
 
-# 파일 경로 상수
-HISTORY_FILE = "ltv_input_history.csv"
-ARCHIVE_FILE = "ltv_archive_deleted.xlsx"
-
-
-def auto_delete_old_entries_from_notion(days=30):
-    """30일 이상 지난 고객 데이터를 Notion에서 자동 archive 처리"""
+# 🔐 토큰/DB 정보 로딩 (Streamlit이든 dotenv든 호환되도록)
+def get_notion_client():
     try:
-        notion = Client(auth=st.secrets["notion"]["token"])
-        db_id = st.secrets["notion"]["database_id"]
-
-        response = notion.databases.query(database_id=db_id)
-        results = response.get("results", [])
-        cutoff = datetime.now() - timedelta(days=days)
-
-        for page in results:
-            props = page.get("properties", {})
-            text = props.get("저장시각", {}).get("rich_text", [])
-            if not text:
-                continue
-
-            time_str = text[0]["text"]["content"]
-
-            try:
-                saved_at = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
-                if saved_at < cutoff:
-                    notion.pages.update(page_id=page["id"], archived=True)
-            except Exception as e:
-                st.warning(f"📅 날짜 파싱 실패: {e}")
-
-    except Exception as e:
-        st.error(f"❌ Notion 자동 삭제 실패: {e}")
-
-
-def delete_customer_from_notion(name_to_delete: str):
-    """고객명을 기반으로 Notion에서만 삭제"""
-    try:
-        notion = Client(auth=st.secrets["notion"]["token"])
-        db_id = st.secrets["notion"]["database_id"]
-
-        response = notion.databases.query(
-            database_id=db_id,
-            filter={
-                "property": "고객명",
-                "title": {
-                    "contains": name_to_delete
-                }
-            }
+        token = (
+            os.getenv("NOTION_TOKEN")
+            or (st.secrets["notion"]["token"] if "notion" in st.secrets else None)
         )
-        for page in response.get("results", []):
-            notion.pages.update(page_id=page["id"], archived=True)
-
+        db_id = (
+            os.getenv("NOTION_DB_ID")
+            or (st.secrets["notion"]["database_id"] if "notion" in st.secrets else None)
+        )
+        if not token or not db_id:
+            raise Exception("Notion 토큰 또는 데이터베이스 ID 누락")
+        return Client(auth=token), db_id
     except Exception as e:
-        st.warning(f"⚠️ Notion 삭제 중 오류 발생: {e}")
+        raise RuntimeError(f"❌ Notion 설정 로딩 실패: {e}")
 
 
-def delete_customer_everywhere(name_to_delete: str):
-    """고객명을 기반으로 CSV와 Notion에서 동시 삭제"""
-    # ✅ 1. CSV에서 삭제 + 백업 저장
-    if os.path.exists(HISTORY_FILE):
-        df = pd.read_csv(HISTORY_FILE)
-        to_delete = df[df["고객명"] == name_to_delete]
-        df = df[df["고객명"] != name_to_delete]
+# ✅ 고객 정보를 Notion DB에 기록
+def delete_customer_from_notion(
+    name,
+    address,
+    deleted_at,
+    region=None,
+    memo=None,
+    loans=None,
+    kb_price=None,
+    area=None,
+    co_owners=None,
+):
+    client, database_id = get_notion_client()
 
-        if not to_delete.empty:
-            to_delete.to_excel(ARCHIVE_FILE, index=False)
-            st.session_state["deleted_data_ready"] = True
+    try:
+        client.pages.create(
+            parent={"database_id": database_id},
+            properties={
+                "고객명": {"title": [{"text": {"content": name}}]},
+                "주소": {"rich_text": [{"text": {"content": address}}]},
+                "지역": {"rich_text": [{"text": {"content": region or ""}}]},
+                "메모": {"rich_text": [{"text": {"content": memo or ""}}]},
+                "대출항목": {"rich_text": [{"text": {"content": loans or ""}}]},
+                "KB시세": {
+                    "number": float(kb_price) if kb_price not in [None, ""] else 0
+                },
+                "면적": {"number": float(area) if area not in [None, ""] else 0},
+                "공동소유자": {
+                    "rich_text": [{"text": {"content": co_owners or ""}}]
+                },
+                "저장시간": {"date": {"start": deleted_at}},
+            },
+        )
+    except Exception as e:
+        raise RuntimeError(f"❌ Notion 기록 실패: {e}")
 
-        df.to_csv(HISTORY_FILE, index=False)
 
-    # ✅ 2. Notion에서 삭제
-    delete_customer_from_notion(name_to_delete)
+# ✅ (선택) 수동 저장용 함수도 별도로 둘 수 있음
+def create_customer_record(
+    name,
+    address,
+    timestamp,
+    region="",
+    memo="",
+    loans="",
+    kb_price=0,
+    area=0,
+    co_owners="",
+):
+    return delete_customer_from_notion(
+        name=name,
+        address=address,
+        deleted_at=timestamp,
+        region=region,
+        memo=memo,
+        loans=loans,
+        kb_price=kb_price,
+        area=area,
+        co_owners=co_owners,
+    )
