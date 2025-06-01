@@ -11,6 +11,8 @@ from notion_client import Client  # Notion SDK
 from notion_utils import auto_delete_old_entries_from_notion
 auto_delete_old_entries_from_notion(days=30)
 
+from history_manager import save_user_input
+
 import fitz  # PyMuPDF
 import pandas as pd
 import streamlit as st
