@@ -7,36 +7,22 @@ import subprocess
 import webbrowser
 import platform
 from datetime import datetime
-from notion_client import Client  # Notion SDK
-from notion_utils import auto_delete_old_entries_from_notion
-auto_delete_old_entries_from_notion(days=30)
-
-from history_manager import save_user_input
 
 import fitz  # PyMuPDF
 import pandas as pd
 import streamlit as st
-import save_user_input
+
+from notion_client import Client  # Notion SDK
+from notion_utils import auto_delete_old_entries_from_notion
+auto_delete_old_entries_from_notion(days=30)
 
 from ltv_map import region_map
 from history_manager import (
+    save_user_input,
     get_customer_options,
     load_customer_input,
     cleanup_old_history,
     search_customers_by_keyword
-    # 🔴 ARCHIVE_FILE 제거! 더 이상 필요 없음
-)
-
-# ─────────────────────────────
-# 🏠 상단 타이틀 + 고객 이력 불러오기
-# ─────────────────────────────
-
-# ✅ 페이지 설정 (페이지 탭 이름 + 아이콘)
-st.set_page_config(
-    page_title="LTV 계산기",
-    page_icon="📊",  # 또는 💰, 🧮, 🏦 등 원하는 이모지 가능
-    layout="wide",  # ← 화면 전체 너비로 UI 확장
-    initial_sidebar_state="auto"
 )
 
 # ------------------------------
