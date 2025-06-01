@@ -3,8 +3,7 @@ import os
 from datetime import datetime
 import streamlit as st
 from ast import literal_eval
-
-from notion_utils import delete_customer_from_notion
+from notion_utils import delete_customer_from_notion  # 추가됨
 
 HISTORY_FILE = "ltv_input_history.csv"
 ARCHIVE_FILE = "ltv_archive_deleted.xlsx"
@@ -39,6 +38,9 @@ def load_customer_input(customer_name):
                 pass
         st.session_state[key] = val
 
+    # ✅ 메모 필드 복원
+    st.session_state["memo_input"] = record.get("메모", "")
+
 def save_user_input(overwrite=False):
     customer_name = get_customer_name()
     if not customer_name:
@@ -53,6 +55,7 @@ def save_user_input(overwrite=False):
         "면적": st.session_state.get("area_input", ""),
         "공동소유자": st.session_state.get("co_owners", []),
         "대출항목": [],
+        "메모": st.session_state.get("memo_input", ""),  # ✅ 메모 저장
         "저장시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
@@ -84,7 +87,6 @@ def cleanup_old_history(name_to_delete):
         return
 
     df = pd.read_csv(HISTORY_FILE)
-
     to_delete = df[df["고객명"] == name_to_delete]
     df = df[df["고객명"] != name_to_delete]
 
@@ -93,16 +95,6 @@ def cleanup_old_history(name_to_delete):
         st.session_state["deleted_data_ready"] = True
 
     df.to_csv(HISTORY_FILE, index=False)
-
-def delete_customer_everywhere(name_to_delete):
-    # 1. CSV에서 삭제
-    cleanup_old_history(name_to_delete)
-
-    # 2. Notion에서 삭제
-    try:
-        delete_customer_from_notion(name_to_delete)
-    except Exception as e:
-        st.warning(f"⚠️ Notion 삭제 중 오류: {e}")
 
 def search_customers_by_keyword(keyword):
     if not os.path.exists(HISTORY_FILE):
