@@ -1,6 +1,0 @@
-streamlit
-pandas
-notion-client
-PyMuPDF
-openpyxl
-python-dotenv
