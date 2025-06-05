@@ -149,13 +149,14 @@ def floor_to_unit(value, unit=100):
     return value // unit * unit
 
 def pdf_to_image(pdf_path, page_num, zoom=2.0):
-    doc = fitz.open(pdf_path)
-    if page_num >= len(doc):
-        return None
-    page = doc.load_page(page_num)
-    mat = fitz.Matrix(zoom, zoom)
-    pix = page.get_pixmap(matrix=mat)
-    return pix.tobytes("png")
+    """Return PNG bytes of the specified page or ``None`` if out of range."""
+    with fitz.open(pdf_path) as doc:
+        if page_num >= len(doc):
+            return None
+        page = doc.load_page(page_num)
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat)
+        return pix.tobytes("png")
 
 
 def format_with_comma(key):
