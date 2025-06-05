@@ -1,25 +1,47 @@
-
-from ltv_map import region_map
+# app.py (전체 통합)
+import os
+import re
+import tempfile
+import fitz  # PyMuPDF
 import pandas as pd
+import streamlit as st
+from datetime import datetime
+from ltv_map import region_map
+from history_manager import (
+    get_customer_options,
+    load_customer_input,
+    save_user_input
+)
 
-def get_auto_deduct_by_address(address):
+# ------------------------------
+# 📌 주소 정규화 함수
+# ------------------------------
+def normalize_address_to_region(address: str):
     try:
-        # 행정동 매핑 파일 로드
-        df = pd.read_excel("대한민국행정동.xlsx")
-        df_filtered = df[df.apply(lambda row: all(
-            word in address for word in [str(row['시도']), str(row['시군구']), str(row['행정동'])]
-        ), axis=1)]
-
-        if df_filtered.empty:
+        addr_clean = re.sub(r"\s+", " ", address)
+        match = re.match(r"([가-힣]+시|[가-힣]+도)\s+([가-힣]+[구군])\s+([가-힣0-9]+동)", addr_clean)
+        if not match:
             return 0, ""
 
-        hf_region = df_filtered.iloc[0]["HF_지역명_매핑"]
+        시도, 시군구, 행정동 = match.groups()
+        df = pd.read_excel("대한민국행정동.xlsx")
+
+        filtered = df[
+            (df["시도"] == 시도) &
+            (df["시군구"] == 시군구) &
+            (df["행정동"] == 행정동)
+        ]
+
+        if filtered.empty:
+            return 0, ""
+
+        hf_region = filtered.iloc[0]["HF_지역명_매핑"]
         deduct = region_map.get(hf_region, 0)
         return deduct, hf_region
-    except Exception as e:
+
+    except Exception:
         return 0, ""
-
-
+    
 import os
 import re
 import sys
