@@ -58,6 +58,16 @@ def load_customer_input(customer_name):
                 pass
         st.session_state[key] = val
 
+    # ✅ 예전 데이터 호환: '진행' 필드를 '진행구분'으로 변환
+    if "대출항목" in st.session_state:
+        normalized_items = []
+        for item in st.session_state.get("대출항목", []):
+            if isinstance(item, dict):
+                if "진행" in item and "진행구분" not in item:
+                    item["진행구분"] = item.pop("진행")
+            normalized_items.append(item)
+        st.session_state["대출항목"] = normalized_items
+
     st.session_state["memo_input"] = record.get("메모", "")
 
 
@@ -90,7 +100,7 @@ def save_user_input(overwrite=False):
             "채권최고액": st.session_state.get(f"maxamt_{i}", ""),
             "비율": st.session_state.get(f"ratio_{i}", ""),
             "원금": st.session_state.get(f"principal_{i}", ""),
-            "진행": st.session_state.get(f"status_{i}", ""),
+            "진행구분": st.session_state.get(f"status_{i}", ""),
         }
         data["대출항목"].append(item)
 
